@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Quiz Landing Page</title>
+    <title>Quick Survey Form</title>
     <style>
         * {
             margin: 0;
@@ -100,6 +100,13 @@
             transform: translateY(0);
         }
         
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
         .message {
             margin-top: 20px;
             padding: 12px;
@@ -146,7 +153,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Join with us</h1>
+            <h1>Quick Survey</h1>
             <p>Help us improve by answering a few questions</p>
         </div>
         
@@ -177,6 +184,9 @@
     </div>
 
     <script>
+        // Your Google Apps Script Web App URL
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbzkVfURdZJ2nFxiIWF-h_U2XGHiWzPvb8GMWNnqt9RaVQSWfE4EXvmwSgTiI7th_up6/exec';
+        
         document.getElementById('quizForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -198,38 +208,47 @@
             
             // Show loading state
             const submitBtn = document.querySelector('.submit-btn');
+            const originalText = submitBtn.textContent;
             submitBtn.textContent = 'Submitting...';
             submitBtn.disabled = true;
             
             // Prepare data for Google Sheets
-            const formData = new FormData();
-            formData.append('name', name);
-            formData.append('age', age);
-            formData.append('email', email);
-            
-            // Replace with your Google Apps Script Web App URL
-            const scriptURL = 'https://script.google.com/macros/s/AKfycbxEDjxvV0dW1fCLZCNDfpFBJ6z8vL32uMAbpfXOdD_vUeQ6M6ole_ziiVYZwZXnacpUtQ/exec';
+            const data = {
+                name: name,
+                age: age,
+                email: email
+            };
             
             // Send data to Google Sheets via Google Apps Script
             fetch(scriptURL, { 
                 method: 'POST', 
-                body: formData 
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(data)
             })
             .then(response => {
                 if (response.ok) {
-                    showMessage('Thank you! Your responses have been recorded.', 'success');
-                    document.getElementById('quizForm').reset();
+                    return response.json();
                 } else {
                     throw new Error('Network response was not ok.');
                 }
             })
+            .then(data => {
+                if (data.result === 'success') {
+                    showMessage('Thank you! Your responses have been recorded.', 'success');
+                    document.getElementById('quizForm').reset();
+                } else {
+                    throw new Error(data.error || 'Unknown error occurred');
+                }
+            })
             .catch(error => {
                 console.error('Error:', error);
-                showMessage('Sorry, there was an error submitting your responses. Please try again.', 'error');
+                showMessage('Error submitting form. Please try again.', 'error');
             })
             .finally(() => {
                 // Reset button state
-                submitBtn.textContent = 'Submit Answers';
+                submitBtn.textContent = originalText;
                 submitBtn.disabled = false;
             });
         });
@@ -240,10 +259,12 @@
             messageEl.className = 'message ' + type;
             messageEl.style.display = 'block';
             
-            // Hide message after 5 seconds
-            setTimeout(() => {
-                messageEl.style.display = 'none';
-            }, 5000);
+            // Hide message after 5 seconds for success, keep error visible
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageEl.style.display = 'none';
+                }, 5000);
+            }
         }
         
         function validateEmail(email) {
