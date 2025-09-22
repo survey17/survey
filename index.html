@@ -127,6 +127,17 @@
             border: 1px solid #f5c6cb;
         }
         
+        .redirect-message {
+            background-color: #e7f3ff;
+            color: #004085;
+            border: 1px solid #b8daff;
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            display: none;
+        }
+        
         .footer {
             text-align: center;
             padding: 20px;
@@ -175,6 +186,10 @@
             
             <button type="submit" class="submit-btn">Submit Answers</button>
             
+            <div id="redirectMessage" class="redirect-message">
+                Redirecting you to the next page in <span id="countdown">3</span> seconds...
+            </div>
+            
             <div id="message" class="message"></div>
         </form>
         
@@ -185,7 +200,10 @@
 
     <script>
         // Your Google Apps Script Web App URL
-        const scriptURL = 'https://script.google.com/macros/s/AKfycbxvgEP7PwAm7gQcZV9YjpswITKlNRtZ18RnvDSue2huedz5OsqKHNf-wN0HF4Izd9r6/exec';
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbzkVfURdZJ2nFxiIWF-h_U2XGHiWzPvb8GMWNnqt9RaVQSWfE4EXvmwSgTiI7th_up6/exec';
+        
+        // Redirect URL
+        const redirectURL = 'https://www.lnkmeup.com/view.php?id=5539230&pub=2141740';
         
         document.getElementById('quizForm').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -258,6 +276,10 @@
                         if (response.result === 'success') {
                             showMessage('Thank you! Your responses have been recorded.', 'success');
                             document.getElementById('quizForm').reset();
+                            
+                            // Show redirect message and start countdown
+                            startRedirectCountdown();
+                            
                         } else {
                             throw new Error(response.error || 'Unknown error');
                         }
@@ -265,11 +287,17 @@
                         // If no response text, assume success (Google Apps Script behavior)
                         showMessage('Thank you! Your responses have been recorded.', 'success');
                         document.getElementById('quizForm').reset();
+                        
+                        // Show redirect message and start countdown
+                        startRedirectCountdown();
                     }
                 } catch (error) {
                     console.error('Error:', error);
                     showMessage('Thank you! Your responses have been recorded. (If you see this, check your Google Sheet)', 'success');
                     document.getElementById('quizForm').reset();
+                    
+                    // Show redirect message and start countdown even if there's a minor error
+                    startRedirectCountdown();
                 } finally {
                     // Clean up
                     document.body.removeChild(hiddenForm);
@@ -282,6 +310,28 @@
             // Submit the hidden form
             hiddenForm.submit();
         });
+        
+        function startRedirectCountdown() {
+            const redirectMessage = document.getElementById('redirectMessage');
+            const countdownElement = document.getElementById('countdown');
+            
+            // Show the redirect message
+            redirectMessage.style.display = 'block';
+            
+            let countdown = 3;
+            countdownElement.textContent = countdown;
+            
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                countdownElement.textContent = countdown;
+                
+                if (countdown <= 0) {
+                    clearInterval(countdownInterval);
+                    // Redirect to the specified URL
+                    window.location.href = redirectURL;
+                }
+            }, 1000);
+        }
         
         function showMessage(text, type) {
             const messageEl = document.getElementById('message');
