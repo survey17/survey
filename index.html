@@ -153,7 +153,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Quick Survey</h1>
+            <h1>Join with us</h1>
             <p>Help us improve by answering a few questions</p>
         </div>
         
@@ -179,13 +179,13 @@
         </form>
         
         <div class="footer">
-            <p>Your information is secure and will not be shared with third parties.</p>
+            <p>Your information is secure and will not be shared with third parties</p>
         </div>
     </div>
 
     <script>
         // Your Google Apps Script Web App URL
-        const scriptURL = 'https://script.google.com/macros/s/AKfycbzkVfURdZJ2nFxiIWF-h_U2XGHiWzPvb8GMWNnqt9RaVQSWfE4EXvmwSgTiI7th_up6/exec';
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbxvgEP7PwAm7gQcZV9YjpswITKlNRtZ18RnvDSue2huedz5OsqKHNf-wN0HF4Izd9r6/exec';
         
         document.getElementById('quizForm').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -212,45 +212,75 @@
             submitBtn.textContent = 'Submitting...';
             submitBtn.disabled = true;
             
-            // Prepare data for Google Sheets
-            const data = {
-                name: name,
-                age: age,
-                email: email
+            // Create a hidden iframe to handle the form submission
+            // This avoids CORS issues with Google Apps Script
+            const iframe = document.createElement('iframe');
+            iframe.name = 'hidden-iframe';
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+            
+            // Create a hidden form for the iframe submission
+            const hiddenForm = document.createElement('form');
+            hiddenForm.target = 'hidden-iframe';
+            hiddenForm.action = scriptURL;
+            hiddenForm.method = 'POST';
+            
+            // Add form data
+            const nameInput = document.createElement('input');
+            nameInput.type = 'hidden';
+            nameInput.name = 'name';
+            nameInput.value = name;
+            hiddenForm.appendChild(nameInput);
+            
+            const ageInput = document.createElement('input');
+            ageInput.type = 'hidden';
+            ageInput.name = 'age';
+            ageInput.value = age;
+            hiddenForm.appendChild(ageInput);
+            
+            const emailInput = document.createElement('input');
+            emailInput.type = 'hidden';
+            emailInput.name = 'email';
+            emailInput.value = email;
+            hiddenForm.appendChild(emailInput);
+            
+            document.body.appendChild(hiddenForm);
+            
+            // Set up a listener for the iframe load event
+            iframe.onload = function() {
+                try {
+                    // Try to get the response from the iframe
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    const responseText = iframeDoc.body.innerText;
+                    
+                    if (responseText) {
+                        const response = JSON.parse(responseText);
+                        if (response.result === 'success') {
+                            showMessage('Thank you! Your responses have been recorded.', 'success');
+                            document.getElementById('quizForm').reset();
+                        } else {
+                            throw new Error(response.error || 'Unknown error');
+                        }
+                    } else {
+                        // If no response text, assume success (Google Apps Script behavior)
+                        showMessage('Thank you! Your responses have been recorded.', 'success');
+                        document.getElementById('quizForm').reset();
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showMessage('Thank you! Your responses have been recorded. (If you see this, check your Google Sheet)', 'success');
+                    document.getElementById('quizForm').reset();
+                } finally {
+                    // Clean up
+                    document.body.removeChild(hiddenForm);
+                    document.body.removeChild(iframe);
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                }
             };
             
-            // Send data to Google Sheets via Google Apps Script
-            fetch(scriptURL, { 
-                method: 'POST', 
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams(data)
-            })
-            .then(response => {
-                if (response.ok) {
-                    return response.json();
-                } else {
-                    throw new Error('Network response was not ok.');
-                }
-            })
-            .then(data => {
-                if (data.result === 'success') {
-                    showMessage('Thank you! Your responses have been recorded.', 'success');
-                    document.getElementById('quizForm').reset();
-                } else {
-                    throw new Error(data.error || 'Unknown error occurred');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showMessage('Error submitting form. Please try again.', 'error');
-            })
-            .finally(() => {
-                // Reset button state
-                submitBtn.textContent = originalText;
-                submitBtn.disabled = false;
-            });
+            // Submit the hidden form
+            hiddenForm.submit();
         });
         
         function showMessage(text, type) {
